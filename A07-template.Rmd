@@ -68,8 +68,22 @@ When you make your plot, you will likely find that the axis range is being set b
 
 
 ```{r}
-duration <- as.numeric(Trips$edate - Trips$sdate)
+Trips <- Trips %>%
+  mutate(duration = as.numeric(edate - sdate) / 60) 
+#Convert duration to minutes
 
+# Filter out outliers (trips longer than 4 hours)
+filtered_trips <- Trips %>%
+  filter(duration <= 240)
+
+# Create the box-and-whisker plot ignoring outliers
+filtered_trips %>%
+  ggplot(aes(x = client, y = duration)) +
+  geom_boxplot(outlier.shape = NA) +
+  coord_cartesian(ylim = c(0, 100)) +
+  labs(title = "Distribution of Rental Duration by Client Type",
+       x = "Client Type",
+       y = "Duration (minutes)")
 ```
 
 
@@ -101,60 +115,92 @@ You can use [Figure 18.3](https://dtkaplan.github.io/DataComputingEbook/project-
 ### Day of Year
 
 ```{r}
-### Your Code Here
+# Create time components
+Trips <- Trips %>%
+  mutate(day_of_year = yday(sdate),
+         day_of_week = wday(sdate, label = TRUE),
+         hour_of_day = hour(sdate),
+         minute_of_hour = minute(sdate))
 
+Trips %>%
+  ggplot(aes(x = day_of_year)) +
+  geom_histogram(binwidth = 1, fill = "blue", color = "black") +
+  labs(title = "Bike Use by Day of the Year", x = "Day of the Year", y = "Count")
 ```
 
 
 My observations here..... 
-
+Bike usage appears relatively uniform throughout the quarter, with some peaks indicating higher usage on certain days. This could correlate with special events or weekends.
 
 ### Day of Week
 
 ```{r}
-### Your Code Here
-
+Trips %>%
+  ggplot(aes(x = day_of_week)) +
+  geom_histogram(stat = "count", fill = "green", color = "black") +
+  labs(title = "Bike Use by Day of the Week", x = "Day of the Week", y = "Count")
 ```
 
 
 My observations here..... 
-
+The histogram shows higher bike usage on weekdays compared to weekends, indicating that most users might be commuting to work or school during the weekdays.
 
 
 ### Hour of Day
 
 ```{r}
-### Your Code Here
-
+Trips %>%
+  ggplot(aes(x = hour_of_day)) +
+  geom_histogram(binwidth = 1, fill = "yellow", color = "black") +
+  labs(title = "Bike Use by Hour of the Day", x = "Hour of the Day", y = "Count")
 ```
 
 
 My observations here..... 
-
+There are noticeable peaks during morning (7-9 AM) and evening (4-6 PM) hours, likely corresponding to commuting times. Bike usage is lower during the night and early morning hours.
 
 
 ### Minute of Hour
 
 ```{r}
-### Your Code Here
-
+Trips %>%
+  ggplot(aes(x = minute_of_hour)) +
+  geom_histogram(binwidth = 1, fill = "pink", color = "black") +
+  labs(title = "Bike Use by Minute of the Hour", x = "Minute of the Hour", y = "Count")
 ```
 
 
 My observations here..... 
-
+The distribution is relatively uniform across all minutes of the hour, suggesting that bikes are checked out continuously throughout the hour without specific preference for any particular minute.
 
 ## Question 3: Grouping
 
 Group the bike rentals by three variables: hour of the day, day of the week, and client type. Find the total number of events in each grouping and plot this count versus hour. Use the group aesthetic to represent one of the other variables and faceting to represent the other. Comment on any general trends you see.
 
 ```{r}
-### My Code here
+Trips <- Trips %>%
+  mutate(day_of_week = wday(sdate, label = TRUE),
+         hour_of_day = hour(sdate))
 
+# Group by hour of the day, day of the week, and client type
+grouped_trips <- Trips %>%
+  group_by(hour_of_day, day_of_week, client) %>%
+  summarise(count = n())
+
+grouped_trips %>%
+  ggplot(aes(x = hour_of_day, y = count, color = client)) +
+  geom_line() +
+  facet_wrap(~day_of_week, ncol = 2) +
+  labs(title = "Bike Rentals by Hour of the Day, Day of the Week, and Client Type",
+       x = "Hour of the Day",
+       y = "Count",
+       color = "Client Type") +
+  theme_minimal()
 ```
 
 My comments here.....
-
+Regular users tend to have higher bike rental counts during weekday mornings (7-9 AM) and evenings (4-6 PM), suggesting commuting patterns.
+There is a clear weekday vs. weekend pattern, with regular users dominating the weekday rentals and casual users increasing their rentals on weekends.
 
 ## Question 4: How Far? 
 
@@ -212,8 +258,21 @@ Our goal here is to recreate [Figure 18.5](https://dtkaplan.github.io/DataComput
 
 
 ```{r}
-### My code here
+# Join PairDistances with Trips to calculate ride distances
+TripsWithDistances <- Trips %>%
+  inner_join(PairDistances, by = c("sstation" = "sstation", "estation" = "estation"))
 
+# Density plot for ride distances
+TripsWithDistances %>%
+  ggplot(aes(x = distance)) +
+  geom_density(fill = "blue", alpha = 0.5) +
+  labs(title = "Density Plot of Ride Distances", x = "Distance (km)", y = "Density")
+
+# Density plot for pair distances
+PairDistances %>%
+  ggplot(aes(x = distance)) +
+  geom_density(fill = "green", alpha = 0.5) +
+  labs(title = "Density Plot of Pair Distances", x = "Distance (km)", y = "Density")
 ```
 
 
@@ -225,7 +284,19 @@ Look at the variables in `Stations` and `Trips` and explain why `Simple` and `Si
 
 Optional Extra credit answer here.....
 
+```{r}
+Simple <- Stations %>%
+  select(name, lat, long) %>%
+  rename(sstation = name)
 
+Simple2 <- Simple %>%
+  rename(estation = sstation, lat2 = lat, long2 = long)
 
+# Perform the join
+StationPairs <- merge(Simple, Simple2, by = NULL)
 
-
+# Display the head of Simple and Simple2 to understand the renaming
+head(Simple)
+head(Simple2)
+```
+By renaming the variables, we ensure clarity in the resulting StationPairs dataframe, where each row represents a unique combination of a starting and ending station, with clearly defined latitude and longitude for both stations. This allows us to accurately calculate the distances between stations using the haversine function.
