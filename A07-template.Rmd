@@ -1,7 +1,7 @@
 ---
 title: "A06- ggplot"
-author: "YOUR NAME"
-date: "DATE"
+author: "Sijie Wu"
+date: "July 23, 2024"
 output: html_notebook
 ---
 
@@ -68,8 +68,7 @@ When you make your plot, you will likely find that the axis range is being set b
 
 
 ```{r}
-### Your code here
-
+duration <- as.numeric(Trips$edate - Trips$sdate)
 
 ```
 
